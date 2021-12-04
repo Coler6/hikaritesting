@@ -13,9 +13,8 @@ from bot import __version__
 HOME_GUILD_ID = 727195918180548728
 STDOUT_CHANNEL_ID = 727196459518263437
 
-class BotMain(lightbulb.Bot):
+class BotMain(lightbulb.BotApp):
     def __init__(self) -> None:
-        self._extensions = [p.stem for p in Path(".").glob("./bot/bot/extensions/*.py")]
         self.scheduler = AsyncIOScheduler()
         self.scheduler.configure(timezone=utc)
 
@@ -25,9 +24,20 @@ class BotMain(lightbulb.Bot):
 
         super().__init__(
             prefix="hk!",
-            insensitive_commands=True,
+            ignore_bots=True,
+            help_slash_command=True, 
+            case_insensitive_prefix_commands=True,
             token=token,
             intents=hikari.Intents.ALL,
+            delete_unbound_commands=True,
+            help_class=None,
+            logs={
+                "version": 1,
+                "incremental": True,
+                "loggers": {
+                    "lightbulb": {"level": "DEBUG"},
+                }
+            }
         )
 
     
@@ -43,10 +53,8 @@ class BotMain(lightbulb.Bot):
             ))
 
     async def on_starting(self, event: hikari.StartingEvent) -> None:
-        for ext in self._extensions:
-            self.load_extension(f"bot.bot.extensions.{ext}")
-            logging.info(f"{ext} extention loaded")
-        
+        self.load_extensions_from("./bot/bot/extensions/", must_exist=True)
+
     async def on_started(self, event: hikari.StartedEvent) -> None:
         self.scheduler.start()
         logging.info("Bot online!")
