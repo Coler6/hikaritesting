@@ -189,5 +189,13 @@ async def banner(ctx):
         return
     await ctx.respond(embed=embed)
 
+@plugin.command
+@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.ADMINISTRATOR))
+@lightbulb.option("channel", "Where the logs will be posted", type=hikari.TextableGuildChannel)
+@lightbulb.command("logging", description="Adds logging!", auto_defer=True)
+@lightbulb.implements(commands.PrefixCommand, commands.SlashCommand)
+async def logging(ctx):
+    channel_id = ctx.options.channel.id
+
 def load(bot: lightbulb.BotApp) -> None:
     bot.add_plugin(plugin)

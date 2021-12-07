@@ -29,7 +29,7 @@ class BotMain(lightbulb.BotApp):
             case_insensitive_prefix_commands=True,
             token=token,
             intents=hikari.Intents.ALL,
-            delete_unbound_commands=True,
+            # delete_unbound_commands=True,
             help_class=None,
             logs={
                 "version": 1,

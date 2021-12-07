@@ -67,18 +67,20 @@ async def kick(ctx):
 @lightbulb.option("reason", "Reason of the ban.", required=False)
 @lightbulb.option("member", "The member that is getting banned", hikari.User, required=True)
 @lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.BAN_MEMBERS))
-@lightbulb.command(name="ban", description="Bans another user from the server.",)
+@lightbulb.command(name="ban", description="Bans another user from the server.", auto_defer=True)
 @lightbulb.implements(commands.PrefixCommand, commands.SlashCommand)
-async def ban(ctx):
+async def ban(ctx: context.Context):
     member = ctx.options.member
     reason = ctx.options.reason or None
-    print(1)
-    print(member)
-    if ctx.get_guild().get_member(member.id) != None: # if user is in the server
+    guild = ctx.get_guild()
+    member_obj = guild.get_member(member.id)
+    if member_obj != None: # if user is in the server
+        print(1.5)
         if member.id == ctx.author.id:
             await ctx.respond("You can't ban your self")
             return
-        if member.get_top_role().position >= ctx.member.get_top_role().position:
+        print(2)
+        if member_obj.get_top_role().position >= ctx.member.get_top_role().position:
             await ctx.respond("That person is higher than you or you have the same role!")
             return
     print(2)
@@ -95,7 +97,7 @@ async def ban(ctx):
 @lightbulb.option("reason", "Reason of the kick.", required=False)
 @lightbulb.option("member", "The member that is getting unbanned", hikari.User, required=True)
 @lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.BAN_MEMBERS))
-@lightbulb.command(name="unban", description="Unbans a user.",)
+@lightbulb.command(name="unban", description="Unbans a user.", auto_defer=True)
 @lightbulb.implements(commands.PrefixCommand, commands.SlashCommand)
 async def unban(ctx):
     print(.05)
@@ -120,7 +122,7 @@ async def unban(ctx):
 @plugin.command
 @lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_MESSAGES))
 @lightbulb.option("member", "The member that is getting muted", hikari.User, required=True)
-@lightbulb.command(name="mute", description="Mutes another user.",)
+@lightbulb.command(name="mute", description="Mutes another user.", auto_defer=True)
 @lightbulb.implements(commands.PrefixCommand, commands.SlashCommand)
 async def mute(ctx):
     print(.1)
@@ -144,7 +146,7 @@ async def mute(ctx):
 @plugin.command
 @lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_MESSAGES))
 @lightbulb.option("member", "The member that is getting unmuted", hikari.User, required=True)
-@lightbulb.command(name="unmute", description="Unmuted another user from the server.",)
+@lightbulb.command(name="unmute", description="Unmuted another user from the server.", auto_defer=True)
 @lightbulb.implements(commands.PrefixCommand, commands.SlashCommand)
 async def unmute(ctx):
     print(.1)

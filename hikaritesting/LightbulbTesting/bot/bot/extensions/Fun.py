@@ -24,7 +24,7 @@ async def ping(ctx: context.Context) -> None:
 
 @plugin.command
 @lightbulb.option("subreddit", "Choose wholesomememes, memes, or dankmemes to get your meme from.", choices=["wholesomememes", "memes", "dankmemes"], required=False)
-@lightbulb.command(name="memes", description="Shows a meme!", aliases=["meme"])
+@lightbulb.command(name="memes", description="Shows a meme!", aliases=["meme"], auto_defer=True)
 @lightbulb.implements(commands.PrefixCommand, commands.SlashCommand)
 async def memes(ctx):
         subreddits = ctx.options.subreddits or None
@@ -107,7 +107,7 @@ async def goat(ctx) -> None:
 
 @plugin.command
 @lightbulb.option("animal", "Choose what animal.", choices=["dog", "cat", "panda", "fox", "bird", "koala"], required=True)
-@lightbulb.command(name="fact", description="Shows a random fact and a image of either a dog, cat, panda, fox, bird, or koala.",)
+@lightbulb.command(name="fact", description="Shows a random fact and a image of either a dog, cat, panda, fox, bird, or koala.", auto_defer=True)
 @lightbulb.implements(commands.PrefixCommand)
 async def fact(ctx):
     """Shows a random fact and a image of either a dog, cat, panda, fox, bird, or koala."""
