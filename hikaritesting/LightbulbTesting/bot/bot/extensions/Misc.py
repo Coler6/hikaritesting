@@ -46,7 +46,7 @@ async def userinfo(ctx) -> None:
             hikari.Embed(
             title="Partial user information",
             description=target.mention,
-            color= ("0x000000"),
+            color= 0x2f3136,
             timestamp=dt.datetime.now().astimezone(),
             )
             .set_thumbnail(target.avatar_url)
@@ -93,6 +93,7 @@ async def userinfo(ctx) -> None:
     await ctx.respond(embed=embed)
 
 @plugin.command
+@lightbulb.add_checks(lightbulb.guild_only)
 @lightbulb.command("serverinfo", description="Shows the info of the server.", auto_defer=True)
 @lightbulb.implements(commands.PrefixCommand, commands.SlashCommand)
 async def serverinfo(ctx) -> None:
@@ -120,6 +121,7 @@ async def serverinfo(ctx) -> None:
     for i in guild.features:
         features = features + i + "\n"
     print(5)
+    bans = await ctx.bot.rest.fetch_bans(guild)
     fields = [("ID", guild.id, True),
                 ("Owner", owner, True),
                 ("Created at", guild.created_at.strftime('%d/%m/%Y %H:%M:%S'), True),
@@ -127,7 +129,7 @@ async def serverinfo(ctx) -> None:
                 ("Members", len(guild.get_members()), True),
                 ("Humans", len(list(filter(lambda m: not m.is_bot, list(guild.get_members().values())))), True),
                 ("Bots", len(list(filter(lambda m: m.is_bot, list(guild.get_members().values())))), True),
-                ("Banned members", len(await ctx.bot.rest.fetch_bans(guild)), True),
+                ("Banned members", (len(bans) if bans != None else "Not available"), True),
                 ("Statuses", f"🟢 {statuses[0]} 🟠 {statuses[1]} 🔴 {statuses[2]} ⚪ {statuses[3]}", True),
                 ("Roles", len(guild.get_roles()), True),
                 ("Emojis", len(guild.get_emojis()), True),
@@ -151,6 +153,7 @@ async def privacy(ctx):
     await ctx.send("**Privacy info**\nWhat do we store?\nWe store your ID if you use our economy system.\nFor reaction roles we store the emoji id, message id, channel id, and role id.\nFor guild customization we only store the guild id and the prefix and id of the ticket.\n\nIf you have any questions please join the support server below! https://discord.gg/rBwSEyH")
 
 @plugin.command
+@lightbulb.add_checks(lightbulb.guild_only)
 @lightbulb.option("target", "The user to get the banner.", hikari.User, required=False)
 @lightbulb.command("avatar", description="The avatar of a user.", auto_defer=True)
 @lightbulb.implements(commands.PrefixCommand, commands.SlashCommand)
@@ -166,14 +169,14 @@ async def avatar(ctx):
     await ctx.respond(embed=embed)
 
 @plugin.command
+@lightbulb.add_checks(lightbulb.guild_only)
 @lightbulb.option("target", "The user to get the banner.", hikari.User, required=False)
 @lightbulb.command("banner", description="The banner of a user.", auto_defer=True)
 @lightbulb.implements(commands.PrefixCommand, commands.SlashCommand)
 async def banner(ctx):
     target = ctx.options.target or ctx.member
-    color = target.get_top_role().color
     target = await ctx.bot.rest.fetch_user(target.id)
-    embed = hikari.Embed(title=f"Banner for {target.username}", description=None, color=color)
+    embed = hikari.Embed(title=f"Banner for {target.username}", description=None, color=(ctx.member.get_top_role().color if ctx.member != None else 0x2f3136))
     print(target.avatar_url)
     print(target.banner_url)
     print(target.accent_color)
@@ -191,6 +194,7 @@ async def banner(ctx):
 
 @plugin.command
 @lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.ADMINISTRATOR))
+@lightbulb.add_checks(lightbulb.guild_only)
 @lightbulb.option("channel", "Where the logs will be posted", type=hikari.TextableGuildChannel)
 @lightbulb.command("logging", description="Adds logging!", auto_defer=True)
 @lightbulb.implements(commands.PrefixCommand, commands.SlashCommand)

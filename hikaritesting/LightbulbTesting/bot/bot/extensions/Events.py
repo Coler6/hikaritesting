@@ -5,6 +5,123 @@ import typing as t
 import datetime as dt
 from lightbulb import commands, context 
 import traceback
+from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageColor
+import PIL.Image
+from PIL import Image
+import numpy as np
+import scipy
+import scipy.misc
+import scipy.cluster
+import binascii
+
+global latest_log 
+
+def add_text(im, text, position):
+        fnt = ImageFont.truetype("/home/container/font/ERAS.ttf", 25)
+        txt = PIL.Image.new("RGBA", im.size, color=(255, 255, 255, 0))
+        d = ImageDraw.Draw(txt)
+        d.text(position, text, font=fnt, fill=(0, 0, 0, 255))
+        im.alpha_composite(txt)
+        return im
+        
+def get_icon(pfp):
+    icon = pfp
+    size = (200,200)
+    icon = icon.resize((200, 200))
+    mask = PIL.Image.new("L", size, 0)
+    draw = ImageDraw.Draw(mask)
+    draw.ellipse((0,0) + size, fill=255)
+    out = ImageOps.fit(pfp.convert("RGBA"), mask.size, centering=(.5,.5))
+    out.putalpha(mask)
+    return out
+        
+def get_text(text, position, size):
+        fnt = ImageFont.truetype("/home/container/font/ERAS.ttf", size)
+        txt = PIL.Image.new("RGBA", (500, 100), color=(0, 0, 0, 0))
+        draw = ImageDraw.Draw(txt)
+        draw.text((0, 0), text, font=fnt, fill=(255, 255, 255, 255))
+        return txt
+def get_smol_text(text, position):
+        fnt = ImageFont.truetype("/home/container/font/arial.ttf", 25)
+        txt = PIL.Image.new("RGBA", (500, 100), color=(0, 0, 0, 0))
+        draw = ImageDraw.Draw(txt)
+        draw.text((0, 0), text, font=fnt, fill=(255, 255, 255, 255))
+        return txt
+    
+def get_color(pfp):
+    NUM_CLUSTERS = 5
+    pfp = pfp.resize((75, 75))
+    ar = np.asarray(pfp)
+    shape = ar.shape
+    ar = ar.reshape(scipy.product(shape[:2]), shape[2]).astype(float)
+    codes, dist = scipy.cluster.vq.kmeans(ar, NUM_CLUSTERS)
+    vecs, dist = scipy.cluster.vq.vq(ar, codes)
+    counts, bins = scipy.histogram(vecs, len(codes))
+    index_max = scipy.argmax(counts)
+    peak = codes[index_max]
+    color = binascii.hexlify(bytearray(int(c) for c in peak)).decode('ascii')
+    return color
+
+def create_welcome_card(pfp, user):
+    base = PIL.Image.new("RGBA", (900, 250), color=(28, 28, 28, 255))
+    icon = get_icon(pfp)
+    text = user.name
+    if len(text) <= 10:
+            size = 80
+            pos_y = 25
+    elif len(text) <= 15:
+            pos_y = 45
+            size = 70
+    elif len(text) <= 25:
+            pos_y = 60
+            size = 40
+    elif len(text) <= 32:
+        pos_y = 75
+        size = 50
+    fnt = ImageFont.truetype("/home/container/font/ERAS.ttf", size)
+    fnt2 = ImageFont.truetype("/home/container/font/arial.ttf", 25)
+    color = get_color(pfp)
+    color = ImageColor.getcolor(f"#{color}", "RGB")
+    print(color)
+    colour = str(color)
+    colour = colour.replace("(", "")
+    colour = colour.replace(")", "")
+    colour_red = colour.split(",")[0]
+    print("1")
+    if color <= (0, 0, 30):
+        color = (0, 0, 30)
+    elif color <= (30, 30, 30):
+        pass
+    elif color <= (30, 30, 30):
+        pass
+    side = ImageDraw.Draw(base)
+    side.rectangle([(0,0),(225, 250)], fill = color)
+    side.polygon([(150, 250), (260, 250), (225,0)], fill = color)
+    base.alpha_composite(icon, (25, 25))
+    W = 900
+    name = user.name
+    name = name.replace(" ", "")
+    print(name)
+    w, h = side.textsize(name, font=fnt)
+    print(w,h)
+    x = ((W-w)/2)+100
+    x = round(x)
+    print(x)
+    print(text)
+    text = get_text(text, (50, pos_y), size)
+    print(text)
+    base.alpha_composite(text, (x, 10))
+    W = 900
+    w, h = side.textsize(f"Welcome to {user.guild.name}!", font=fnt2)
+    x = ((W-w)/2)+100
+    x = round(x)
+    text = get_smol_text(f"Welcome to {user.guild.name}!", (50, 25))
+    base.alpha_composite(text, (x, 90))
+    return base
+
+def msg_emoji(emoji):
+    emoji = f"<:{emoji.name}:{emoji.id}>"
+    return emoji
 
 plugin = lightbulb.Plugin("Events")
 guild_id = 727195918180548728 # your guild
@@ -61,8 +178,8 @@ async def on_guild_update(event): #ban
             color="0x00FFFF",
             timestamp=dt.datetime.now().astimezone(),
         )
-        disovery_embed.add_field("**Icon:**", new_guild.splash_url)
-        disovery_embed.set_image(new_guild.splash_url)
+        splash_embed.add_field("**Icon:**", new_guild.splash_url)
+        splash_embed.set_image(new_guild.splash_url)
         await log_channel.send(embed=splash_embed)
     if old_guild.name != new_guild.name:
         old_values += "\n**Name:** " + old_guild.name
@@ -138,6 +255,73 @@ async def on_unban(event): #unban
     embed.add_field("Action user", f"{action_user.username} ({action_user.id})")
     await log_channel.send(embed=embed)
 
+@plugin.listener(hikari.MemberCreateEvent)
+async def on_member_join(event): #member joins
+    if event.guild_id != guild_id:
+        return
+    log_channel = event.get_guild().get_channel(channel_id)
+    member = event.member
+    embed =  hikari.Embed(
+        title="Member joined",
+        description=f"{member.display_name} ({member.id})",
+        timestamp=dt.datetime.now().astimezone(),
+    )
+    embed.set_thumbnail(member.avatar_url)
+    await log_channel.send(embed=embed)
+
+@plugin.listener(hikari.MemberDeleteEvent)
+async def on_member_leave(event): #member joins
+    if event.guild_id != guild_id:
+        return
+    log_channel = event.get_guild().get_channel(channel_id)
+    member = event.old_member
+    embed =  hikari.Embed(
+        title="Member left",
+        description=f"{member.display_name} ({member.id})",
+        timestamp=dt.datetime.now().astimezone(),
+    )
+    embed.set_thumbnail(member.avatar_url)
+    await log_channel.send(embed=embed)
+
+@plugin.listener(hikari.MemberUpdateEvent)
+async def on_member_update(event):
+    if event.guild_id != guild_id:
+        return
+    guild = event.get_guild()
+    log_channel = guild.get_channel(channel_id)
+    old_member = event.old_member
+    member = event.member
+    if old_member.nickname != member.nickname:
+        embed =  hikari.Embed(
+            title="Member nickname updated",
+            timestamp=dt.datetime.now().astimezone(),
+            color="0x00FFFF"
+        )
+        embed.set_author(name=member.username, icon=member.avatar_url)
+        embed.add_field("Before:", str(old_member.nickname), inline=True)
+        embed.add_field("After:", str(member.nickname), inline=True)
+        await log_channel.send(embed=embed)
+    if set(old_member.role_ids) != set(member.role_ids):
+        roles_removed = list(set(old_member.role_ids) - set(member.role_ids))
+        roles_added = list(set(member.role_ids) - set(old_member.role_ids))
+        embed =  hikari.Embed(
+            title="Member roles updated",
+            timestamp=dt.datetime.now().astimezone(),
+            color="0x00FFFF"
+        )
+        embed.set_author(name=member.username, icon=member.avatar_url)
+        if roles_added != []:
+            roles = ""
+            for role in roles_added:
+                roles += guild.get_role(role).mention + " "
+            embed.add_field("Added:", roles, inline=True)
+        if roles_removed != []:
+            roles = ""
+            for role in roles_removed:
+                roles += guild.get_role(role).mention + " "
+            embed.add_field("Removed:", roles, inline=True)
+        await log_channel.send(embed=embed)
+
 @plugin.listener(hikari.GuildJoinEvent)
 async def on_bot_join(event): #Bot joins
     guild = event.guild
@@ -146,7 +330,7 @@ async def on_bot_join(event): #Bot joins
         title="Joined server",
         description=f"{guild.name} ({guild.id})",
         timestamp=dt.datetime.now().astimezone(),
-        )
+    )
     embed.add_field("Members", guild.member_count)
     await owner.send(embed=embed)
 
@@ -158,7 +342,7 @@ async def on_bot_leave(event): #Bot leave
         title="Left server",
         description=f"{guild.name} ({guild.id})",
         timestamp=dt.datetime.now().astimezone(),
-        )
+    )
     embed.add_field("Members", guild.member_count)
     await owner.send(embed=embed)
 
@@ -171,6 +355,7 @@ async def on_channel_create(event): #Channel created
     embed = hikari.Embed(
         title="Channel created",
         description=f"{channel.name} ({channel.id})\n{channel.mention}", 
+        color="0x00FFFF",
         timestamp=dt.datetime.now().astimezone(),
     )
     embed.add_field("Type", channel.type)
@@ -186,6 +371,7 @@ async def on_channel_delete(event): #Channel deleted
     embed = hikari.Embed(
         title="Channel deleted",
         description=f"{channel.name} ({channel.id})", 
+        color="0x00FFFF",
         timestamp=dt.datetime.now().astimezone(),
     )
     embed.add_field("Type", channel.type)
@@ -202,6 +388,7 @@ async def on_channel_update(event): #Channel deleted
     new_channel = event.channel
     embed = hikari.Embed(
         title="Channel updated",
+        description=new_channel.mention,
         color="0x00FFFF",
         timestamp=dt.datetime.now().astimezone(),
     )
@@ -222,88 +409,74 @@ async def on_channel_update(event): #Channel deleted
     if old_channel.permission_overwrites != new_channel.permission_overwrites:
         print(old_channel.permission_overwrites)
         print(new_channel.permission_overwrites)
-        for new_perm in new_channel.permission_overwrites.items():
-            print("new")
-            print(new_perm)
-            for old_perm in old_channel.permission_overwrites.items():
-                print("old")
-                if new_perm[1].id != old_perm[1].id:
-                    print("different ids")
+        overwrite_add = set(new_channel.permission_overwrites) - set(old_channel.permission_overwrites) # add
+        overwrite_remove = set(old_channel.permission_overwrites) - set(new_channel.permission_overwrites) # remove
+        for _perm in new_channel.permission_overwrites:
+            if _perm in overwrite_add or _perm in overwrite_remove: # It will continue if overwrite has just been added or removed
+                continue
+            perm = new_channel.permission_overwrites.get(_perm)
+            old_perm = old_channel.permission_overwrites.get(_perm)
+            new_allow = set(perm.allow) - set(old_perm.allow)
+            new_deny = set(perm.deny) - set(old_perm.deny)
+            old_allow = set(old_perm.allow) - set(perm.allow)
+            old_deny = set(old_perm.deny) - set(perm.deny)
+            for permission in new_allow:
+                embed.add_field(f"{(str(permission.name).lower()).replace('_', ' ').replace(str(permission.name)[0].lower(), str(permission.name)[0], 1)}:", f"{'⬜' if permission not in old_allow and permission not in old_deny else '❎'} -> ✅", inline=True)
+            for permission in new_deny:
+                embed.add_field(f"{(str(permission.name).lower()).replace('_', ' ').replace(str(permission.name)[0].lower(), str(permission.name)[0], 1)}:", f"{'⬜' if permission not in old_allow and permission not in old_deny else '✅'} -> ❎", inline=True)
+            for permission in old_allow:
+                if permission in new_allow or permission in new_deny:
                     continue
-                if new_perm[1].allow == old_perm[1].allow and new_perm[1].deny == old_perm[1].deny:
-                    print("both equal")
+                embed.add_field(f"{(str(permission.name).lower()).replace('_', ' ').replace(str(permission.name)[0].lower(), str(permission.name)[0], 1)}:", f"✅ -> ⬜", inline=True)
+            for permission in old_deny:
+                if permission in new_allow or permission in new_deny:
                     continue
-                print(old_perm)
-                new_perm_id = new_perm[1].id
-                if new_perm[1].type.value == 0: # Role overwrite
-                    role = guild.get_role(new_perm_id)
-                    old_allow_perm = ""
-                    new_allow_perm = ""
-                    old_deny_perm = ""
-                    new_deny_perm = ""
-                    for e_new_perm in new_perm[1].allow:
-                        print("new allow")
-                        print(e_new_perm)
-                        for e_old_perm in old_perm[1].allow:
-                            print("old allow")
-                            print(e_old_perm)
-                            if e_new_perm == e_new_perm:
-                                continue
-                            old_allow_perm += str(e_old_perm) + " "
-                            new_allow_perm += str(e_new_perm) + " "
-                    for i_old_perm in old_perm[1].deny:
-                        print("new deny")
-                        print(i_old_perm)
-                        for i_new_perm in new_perm[1].deny:
-                            print("old deny")
-                            print(i_new_perm)
-                            if i_old_perm == i_new_perm:
-                                continue
-                            old_deny_perm += str(i_old_perm) + " "
-                            new_deny_perm += str(i_new_perm) + " "
-                    print("old allow\n" + old_allow_perm)
-                    print("old deny\n" + old_deny_perm)
-                    print("new allow\n" + new_allow_perm)
-                    print("new deny\n" + new_deny_perm)
-                    embed.add_field(f"Role permissions updated", f"{role.name} ({role.id})")
-                    embed.add_field("Before", f"✅ {old_allow_perm}\n❎ {old_deny_perm}")
-                    embed.add_field("After", f"✅ {new_allow_perm}\n❎ {new_deny_perm}")
-                    print("role")
-                elif new_perm[1].type.value == 1: # Member overwrite
-                    member = guild.get_member(new_perm_id)
-                    old_allow_perm = ""
-                    new_allow_perm = ""
-                    old_deny_perm = ""
-                    new_deny_perm = ""
-                    for new_perm in new_perm[1].allow:
-                        print("new")
-                        print(new_perm)
-                        for old_perm in old_perm[1].allow:
-                            print("old")
-                            print(old_perm)
-                            if old_perm == new_perm:
-                                continue
-                            old_allow_perm += str(old_perm) + " "
-                            new_allow_perm += str(new_perm) + " "
-                    for new_perm in new_perm[1].deny:
-                        print("new")
-                        print(new_perm)
-                        for old_perm in old_perm[1].deny:
-                            print("old")
-                            print(old_perm)
-                            if old_perm == new_perm:
-                                continue
-                            old_deny_perm += str(old_perm) + " "
-                            new_deny_perm += str(new_perm) + " "
-                    print("old allow\n" + old_allow_perm)
-                    print("old deny\n" + old_deny_perm)
-                    print("new allow\n" + new_allow_perm)
-                    print("new deny\n" + new_deny_perm)
-                    embed.add_field(f"Member permissions updated", f"{member.name} ({member.id})")
-                    embed.add_field("Before", f"✅ {old_allow_perm}\n❎ {old_deny_perm}")
-                    embed.add_field("After", f"✅ {new_allow_perm}\n❎ {new_deny_perm}")
-                    print("member")
-    await log_channel.send(embed=embed)
+                embed.add_field(f"{(str(permission.name).lower()).replace('_', ' ').replace(str(permission.name)[0].lower(), str(permission.name)[0], 1)}:", f"❎ -> ⬜", inline=True)
+            print(new_allow)
+            print(new_deny)
+            print(old_allow)
+            print(old_deny)
+        if overwrite_add != ():
+            for permission in overwrite_add:
+                overwrite_embed = hikari.Embed(
+                    title="Channel overrides updated",
+                    description=new_channel.mention,
+                    color="0x00FFFF",
+                    timestamp=dt.datetime.now().astimezone(),
+                )
+                perm = new_channel.permission_overwrites.get(permission)
+                print(perm)
+                if perm.type.value == 0: # Role overwrite
+                    overwrite_embed.add_field("Added role overwrites", guild.get_role(perm.id).mention)
+                if perm.type.value == 1: # Member overwrite
+                    overwrite_embed.add_field("Added member overwrites", guild.get_member(perm.id).mention)
+                if str(perm.allow) != "NONE":
+                    overwrite_embed.add_field("Allow:", str(perm.allow).replace("|", " | "))
+                if str(perm.deny) != "NONE":
+                    overwrite_embed.add_field("Deny:", str(perm.deny).replace("|", " | "))
+                await log_channel.send(embed=overwrite_embed)
+        if overwrite_remove != ():
+            for permission in overwrite_remove:
+                print(permission)
+                overwrite_embed = hikari.Embed(
+                    title="Channel overwrites updated",
+                    description=new_channel.mention,
+                    color="0x00FFFF",
+                    timestamp=dt.datetime.now().astimezone(),
+                )
+                perm = old_channel.permission_overwrites.get(permission)
+                print(perm)
+                if perm.type.value == 0: # Role overwrite
+                    overwrite_embed.add_field("Removed role overwrites", guild.get_role(perm.id).mention)
+                if perm.type.value == 1: # Member overwrite
+                    overwrite_embed.add_field("Removed member overwrites", guild.get_member(perm.id).mention)
+                if str(perm.allow) != "NONE":
+                    overwrite_embed.add_field("Allow:", str(perm.allow).replace("|", " "))
+                if str(perm.deny) != "NONE":
+                    overwrite_embed.add_field("Deny:", str(perm.deny).replace("|", " "))
+                await log_channel.send(embed=overwrite_embed)
+    if embed.fields != []:
+        await log_channel.send(embed=embed)
 
 @plugin.listener(hikari.InviteCreateEvent)
 async def on_invite_create(event): #Invite created
@@ -371,6 +544,10 @@ async def on_message_edit(event): #Message edited
     log_channel = guild.get_channel(channel_id)
     message = event.old_message
     new_message = event.message
+    print(message)
+    print(new_message)
+    if message.content == None and new_message.content == None:
+        return
     channel = guild.get_channel(message.channel_id)
     embed = hikari.Embed(
         title="Message edited",
@@ -388,19 +565,148 @@ async def on_message_purge(event): #Mass message deleted
         return
     guild = event.get_guild()
     log_channel = guild.get_channel(channel_id)
-    message = event.old_message
-    new_message = event.message
-    channel = guild.get_channel(message.channel_id)
+    messages = event.old_messages
+    channel = event.get_channel()
     embed = hikari.Embed(
         title="Messages purged",
         description=f"In channel {channel.mention}",
         timestamp=dt.datetime.now().astimezone(),
     )
-    embed.set_author(name=message.author.username, icon=message.author.avatar_url)
-    embed.add_field("Before", message.content, inline=True)
-    embed.add_field("After", new_message.content, inline=True)
+    embed.add_field("Amount", len(messages), inline=True)
     await log_channel.send(embed=embed)
     
+@plugin.listener(hikari.RoleCreateEvent)
+async def on_role_create(event): #Role added
+    if event.guild_id != guild_id:
+        return
+    guild = await event.app.rest.fetch_guild(event.guild_id)
+    log_channel = guild.get_channel(channel_id)
+    role = event.role
+    embed = hikari.Embed(
+        title="Role created",
+        description=role.mention,
+        timestamp=dt.datetime.now().astimezone(),
+    )
+    await log_channel.send(embed=embed)
+
+@plugin.listener(hikari.RoleDeleteEvent)
+async def on_role_delete(event): #Role deleted
+    if event.guild_id != guild_id:
+        return
+    guild = await event.app.rest.fetch_guild(event.guild_id)
+    log_channel = guild.get_channel(channel_id)
+    role = event.old_role
+    embed = hikari.Embed(
+        title="Role deleted",
+        description=f"{role.mention} ({role.name})",
+        timestamp=dt.datetime.now().astimezone(),
+    )
+    await log_channel.send(embed=embed)
+
+@plugin.listener(hikari.RoleUpdateEvent)
+async def on_role_updated(event): #Role updaed
+    if event.guild_id != guild_id:
+        return
+    guild = await event.app.rest.fetch_guild(event.guild_id)
+    log_channel = guild.get_channel(channel_id)
+    new_role = event.role
+    old_role = event.old_role
+    embed = hikari.Embed(
+        title="Role updated",
+        description=new_role.mention,
+        timestamp=dt.datetime.now().astimezone(),
+    )
+    old_values = ""
+    new_values = ""
+    if old_role.name != new_role.name: 
+        old_values += "\n**Name:** " + old_role.name
+        new_values += "\n**Name:** " + new_role.name
+    if old_role.position != new_role.position:
+        old_values += "\n**Position:** " + str(old_role.position)
+        new_values += "\n**Position:** " + str(new_role.position)
+    if old_role.color != new_role.color:
+        old_values += "\n**Color:** " + str(old_role.color)
+        new_values += "\n**Color:** " + str(new_role.color)
+    if old_role.unicode_emoji != new_role.unicode_emoji:
+        old_values += "\n**Emoji:** " + str(old_role.unicode_emoji)
+        new_values += "\n**Emoji:** " + str(new_role.unicode_emoji)
+    if old_role.icon_url != new_role.icon_url:
+        old_values += "\n**Icon:** " + str(old_role.icon_url)
+        new_values += "\n**Icon:** " + str(new_role.icon_url)
+    if old_role.is_hoisted != new_role.is_hoisted:
+        old_values += "\n**Display separately:** " + str(old_role.is_hoisted)
+        new_values += "\n**Display separately:** " + str(new_role.is_hoisted)
+    if old_role.is_mentionable != new_role.is_mentionable:
+        old_values += "\n**Mentionable:** " + str(old_role.is_mentionable)
+        new_values += "\n**Mentionable:** " + str(new_role.is_mentionable)
+    if old_values != "" and new_values != "":
+        embed.add_field("Before", old_values, inline=True)
+        embed.add_field("After", new_values, inline=True)
+    if old_role.permissions != new_role.permissions:
+        perm_embed = hikari.Embed(
+            title="Role permissions updated",
+            description=new_role.mention,
+            timestamp=dt.datetime.now().astimezone(),
+        )
+        new_perms = new_role.permissions
+        old_perms = old_role.permissions
+        new_perm = set(new_perms) - set(old_perms)
+        old_perm = set(old_perms) - set(new_perms)
+        for permission in new_perm:
+            perm_embed.add_field(f"{(str(permission.name).lower()).replace('_', ' ').replace(str(permission.name)[0].lower(), str(permission.name)[0], 1)}:", "❎ -> ✅", inline=True)
+        for permission in old_perm:
+            perm_embed.add_field(f"{(str(permission.name).lower()).replace('_', ' ').replace(str(permission.name)[0].lower(), str(permission.name)[0], 1)}:", "✅ -> ❎", inline=True)
+        print(new_perm)
+        print(old_perm)
+        await log_channel.send(embed=perm_embed)
+    if embed.fields != []:
+        await log_channel.send(embed=embed)
+
+@plugin.listener(hikari.EmojisUpdateEvent)
+async def on_emojis_update(event): #Emoji updated, deleted, created
+    if event.guild_id != guild_id:
+        return
+    guild = event.get_guild()
+    log_channel = guild.get_channel(channel_id)
+    old_emojis = event.old_emojis
+    new_emojis = event.emojis
+    created_emojis = set(new_emojis) - set(old_emojis)
+    deleted_emojis = set(old_emojis) - set(new_emojis)
+    print(created_emojis)
+    print(deleted_emojis)
+    print(old_emojis)
+    print(new_emojis)
+    if created_emojis != ():
+        embed = hikari.Embed(
+            title="Emoji created",
+            timestamp=dt.datetime.now().astimezone(),
+        )
+        for emoji in created_emojis:
+            embed.add_field("Name:", emoji.name + "\n" + msg_emoji(emoji))
+        if embed.fields != []:
+            await log_channel.send(embed=embed)
+    if deleted_emojis != ():
+        embed = hikari.Embed(
+            title="Emoji deleted",
+            timestamp=dt.datetime.now().astimezone(),
+        )
+        for emoji in deleted_emojis:
+            embed.add_field("Name:", emoji.name)
+        if embed.fields != []:
+            await log_channel.send(embed=embed)
+    for emoji in new_emojis:
+        for o_emoji in old_emojis:
+            if emoji.id == o_emoji.id:
+                if emoji.name != o_emoji.name:
+                    embed = hikari.Embed(
+                        title="Emoji updated",
+                        description=msg_emoji(emoji),
+                        timestamp=dt.datetime.now().astimezone(),
+                    )
+                    embed.add_field("Before", o_emoji.name)
+                    embed.add_field("After", emoji.name)
+                    await log_channel.respond(embed=embed)
+                    
 @plugin.listener(hikari.GuildReactionAddEvent)
 async def on_reaction_add(event): #Reaction added
     pass
@@ -410,7 +716,7 @@ async def on_reaction_remove(event): #Reaction removed
     pass
 
 @plugin.listener(hikari.VoiceStateUpdateEvent)
-async def on_voice_update(event): #Reaction removed
+async def on_voice_update(event): #Voice updated
     pass
 
 def load(bot: lightbulb.BotApp) -> None:

@@ -12,8 +12,7 @@ plugin = lightbulb.Plugin("Help")
 @lightbulb.command(name="help", description="Shows the help command.", auto_defer=True)
 @lightbulb.implements(commands.PrefixCommand, commands.SlashCommand)
 async def help(ctx):
-    color = ctx.member.get_top_role().color
-    menu_embed = hikari.Embed(title="Help command", description="Use the select below to go to different extension's help menu.", color = color)
+    menu_embed = hikari.Embed(title="Help command", description="Use the select below to go to different extension's help menu.", color=(ctx.member.get_top_role().color if ctx.member != None else 0x2f3136))
     select = ctx.bot.rest.build_action_row()
     select = select.add_select_menu("Select a extension!")
     embeds = {}
@@ -24,7 +23,7 @@ async def help(ctx):
             continue
         if extension.name == "ErrorHandler":
             continue
-        embed = hikari.Embed(title=f"{extension.name} extension", color = color)
+        embed = hikari.Embed(title=f"{extension.name} extension", color=(ctx.member.get_top_role().color if ctx.member != None else 0x2f3136))
         for command in extension.raw_commands:
             embed.add_field(name=f"{command.name} {f'({command.aliases})' if command.aliases != [] else ''}", value=f"{command.description}", inline=True)
         embeds[extension.name] = embed

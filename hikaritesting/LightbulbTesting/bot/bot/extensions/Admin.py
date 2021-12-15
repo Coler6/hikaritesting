@@ -17,7 +17,12 @@ async def handle_extensions(  ctx:  context.Context, extensions: str, action: st
     count = 0
     for ext in extensions:
         try:
-            getattr(ctx.bot, f"{action}_extension")(f"bot.bot.extensions.{ext.lower()}")
+            if action == "reload":
+                ctx.bot.reload_extensions()
+            elif action == "load":
+                ctx.bot.load_extensions()
+            elif action == "unload":
+                ctx.bot.unload_extensions()
             logging.info(f"'{ext}' extension {action}ed")
             count += 1
         except lightbulb.errors.ExtensionAlreadyLoaded:
@@ -29,26 +34,38 @@ async def handle_extensions(  ctx:  context.Context, extensions: str, action: st
 @plugin.command
 @lightbulb.command(name="shutdown", description="Shutsdown the entire freaking bot.", aliases=("sd", ))
 @lightbulb.implements(commands.PrefixCommand)
-async def command_shutdown(ctx) -> None:
+async def shutdown(ctx) -> None:
     await ctx.bot.close()
 
 @plugin.command
+@lightbulb.option("extensions", "What extension", required=False)
 @lightbulb.command(name="reload", description="Reloads an extension")
 @lightbulb.implements(commands.PrefixCommand)
-async def reload(  ctx:  context.Context, *, extensions: str = ""):
-    await self.handle_extensions(ctx, extensions, "reload")
+async def reload(ctx:  context.Context):
+    await handle_extensions(ctx, ctx.options.extensions, "reload")
 
 @plugin.command
+@lightbulb.option("extensions", "What extension", required=False)
 @lightbulb.command(name="load", description="Loads an extension", )
 @lightbulb.implements(commands.PrefixCommand)
-async def load(  ctx:  context.Context, *, extensions: str = ""):
-    await self.handle_extensions(ctx, extensions, "load")
+async def load(ctx:  context.Context):
+    await handle_extensions(ctx, ctx.options.extensions, "load")
 
 @plugin.command
+@lightbulb.option("extensions", "What extension", required=False)
 @lightbulb.command(name="unload", description="Unloads an extension", )
 @lightbulb.implements(commands.PrefixCommand)
-async def unload(  ctx:  context.Context, *, extensions: str = ""):
-    await self.handle_extensions(ctx, extensions, "unload")
+async def unload(ctx:  context.Context):
+    await handle_extensions(ctx, ctx.options.extensions, "unload")
+
+@plugin.command
+@lightbulb.option(name="statement", description="What do you want to do.")
+@lightbulb.command(name="eval", description="It does something.. I think")
+@lightbulb.implements(commands.PrefixCommand)
+async def eval_cmd(ctx) -> None:
+    result = eval(ctx.options.statement)
+    print(result)
+    await ctx.respond(f"```py\n>>> {result}```")
 
 def load(bot: lightbulb.BotApp) -> None:
     bot.add_plugin(plugin)

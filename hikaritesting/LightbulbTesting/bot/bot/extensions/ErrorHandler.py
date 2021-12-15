@@ -5,13 +5,14 @@ import hikari
 from bot.bot import Bot
 import logging
 from lightbulb import commands, context
+import traceback
 
 plugin = lightbulb.Plugin("ErrorHandler")
     
 
 @plugin.listener(lightbulb.CommandErrorEvent)
-async def on_command_error(  event: lightbulb.CommandErrorEvent) -> None:
-
+async def on_command_error(event: lightbulb.CommandErrorEvent) -> None:
+    print(traceback.print_exception(*event.exc_info))
     if isinstance(event.exception, (lightbulb.errors.ExtensionNotLoaded, lightbulb.errors.ExtensionAlreadyLoaded)):
         return
     elif isinstance(event.exception, lightbulb.errors.CommandNotFound):
@@ -19,7 +20,7 @@ async def on_command_error(  event: lightbulb.CommandErrorEvent) -> None:
     elif isinstance(event.exception, lightbulb.errors.ConverterFailure):
         return await event.context.respond("Converter Failure", flags=hikari.MessageFlag.EPHEMERAL)
     elif isinstance(event.exception, lightbulb.errors.NotEnoughArguments):
-        return await event.context.respond("Not enough arguements were passed. " + event.exception, flags=hikari.MessageFlag.EPHEMERAL)
+        return await event.context.respond(f"Not enough arguements were passed. {event.exception}", flags=hikari.MessageFlag.EPHEMERAL)
     elif isinstance(event.exception, lightbulb.errors.CommandIsOnCooldown):
         return await event.context.respond(f"Command is on cooldown. Try again in {event.exception.retry_after:.0f} seconds", flags=hikari.MessageFlag.EPHEMERAL)
     elif isinstance(event.exception, lightbulb.errors.BotMissingRequiredPermission):
