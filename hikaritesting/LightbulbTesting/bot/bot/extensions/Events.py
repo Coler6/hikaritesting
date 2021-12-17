@@ -14,6 +14,10 @@ import scipy.misc
 import scipy.cluster
 import binascii
 
+def msg_emoji(emoji):
+    emoji = f"<:{emoji.name}:{emoji.id}>"
+    return emoji
+
 global latest_log 
 
 def add_text(im, text, position):
@@ -119,9 +123,7 @@ def create_welcome_card(pfp, user):
     base.alpha_composite(text, (x, 90))
     return base
 
-def msg_emoji(emoji):
-    emoji = f"<:{emoji.name}:{emoji.id}>"
-    return emoji
+
 
 plugin = lightbulb.Plugin("Events")
 guild_id = 727195918180548728 # your guild
@@ -223,7 +225,7 @@ async def on_ban(event): #ban
         title="Member banned", 
         description=user.mention + f" ({user.id})", 
         timestamp=dt.datetime.now().astimezone(), 
-        color=(user.accent_color if user.accent_color != None else "0x000000")
+        color=(user.accent_color if user.accent_color != None else "0x00FFFF")
     )
     embed.set_author(name=user.username, icon=user.avatar_url)
     if reason != None:
@@ -247,7 +249,7 @@ async def on_unban(event): #unban
         title="Member unbanned", 
         description=user.mention + f" ({user.id})", 
         timestamp=dt.datetime.now().astimezone(), 
-        color=(user.accent_color if user.accent_color != None else "0x000000")
+        color=(user.accent_color if user.accent_color != None else "0x00FFFF")
     )
     embed.set_author(name=user.username, icon=user.avatar_url)
     if reason != None:
@@ -264,6 +266,7 @@ async def on_member_join(event): #member joins
     embed =  hikari.Embed(
         title="Member joined",
         description=f"{member.display_name} ({member.id})",
+        color="0x00FFFF",
         timestamp=dt.datetime.now().astimezone(),
     )
     embed.set_thumbnail(member.avatar_url)
@@ -278,6 +281,7 @@ async def on_member_leave(event): #member joins
     embed =  hikari.Embed(
         title="Member left",
         description=f"{member.display_name} ({member.id})",
+        color="0x00FFFF",
         timestamp=dt.datetime.now().astimezone(),
     )
     embed.set_thumbnail(member.avatar_url)
@@ -329,6 +333,7 @@ async def on_bot_join(event): #Bot joins
     embed =  hikari.Embed(
         title="Joined server",
         description=f"{guild.name} ({guild.id})",
+        color="0x00FFFF",
         timestamp=dt.datetime.now().astimezone(),
     )
     embed.add_field("Members", guild.member_count)
@@ -341,6 +346,7 @@ async def on_bot_leave(event): #Bot leave
     embed =  hikari.Embed(
         title="Left server",
         description=f"{guild.name} ({guild.id})",
+        color="0x00FFFF",
         timestamp=dt.datetime.now().astimezone(),
     )
     embed.add_field("Members", guild.member_count)
@@ -488,6 +494,7 @@ async def on_invite_create(event): #Invite created
     embed = hikari.Embed(
         title="Invite created",
         description="https://discord.gg/" + event.code,
+        color="0x00FFFF",
         timestamp=dt.datetime.now().astimezone(),
     )
     embed.set_author(name=invite.inviter.username, icon=invite.inviter.avatar_url)
@@ -510,6 +517,7 @@ async def on_invite_delete(event): #Invite deleted
     embed = hikari.Embed(
         title="Invite deleted",
         description="https://discord.gg/" + event.code,
+        color="0x00FFFF",
         timestamp=dt.datetime.now().astimezone(),
     )
     embed.set_author(name=invite.inviter.username, icon=invite.inviter.avatar_url)
@@ -530,6 +538,7 @@ async def on_message_delete(event): #Message deleted
     embed = hikari.Embed(
         title="Message deleted",
         description=f"In channel {channel.mention}",
+        color="0x00FFFF",
         timestamp=dt.datetime.now().astimezone(),
     )
     embed.set_author(name=message.author.username, icon=message.author.avatar_url)
@@ -546,12 +555,17 @@ async def on_message_edit(event): #Message edited
     new_message = event.message
     print(message)
     print(new_message)
-    if message.content == None and new_message.content == None:
+    print(message.content)
+    print(new_message.content)
+    if message.content == None or new_message.content == None:
+        return
+    if message.content == new_message.content:
         return
     channel = guild.get_channel(message.channel_id)
     embed = hikari.Embed(
         title="Message edited",
         description=f"In channel {channel.mention}",
+        color="0x00FFFF",
         timestamp=dt.datetime.now().astimezone(),
     )
     embed.set_author(name=message.author.username, icon=message.author.avatar_url)
@@ -570,6 +584,7 @@ async def on_message_purge(event): #Mass message deleted
     embed = hikari.Embed(
         title="Messages purged",
         description=f"In channel {channel.mention}",
+        color="0x00FFFF",
         timestamp=dt.datetime.now().astimezone(),
     )
     embed.add_field("Amount", len(messages), inline=True)
@@ -585,6 +600,7 @@ async def on_role_create(event): #Role added
     embed = hikari.Embed(
         title="Role created",
         description=role.mention,
+        color="0x00FFFF",
         timestamp=dt.datetime.now().astimezone(),
     )
     await log_channel.send(embed=embed)
@@ -599,6 +615,7 @@ async def on_role_delete(event): #Role deleted
     embed = hikari.Embed(
         title="Role deleted",
         description=f"{role.mention} ({role.name})",
+        color="0x00FFFF",
         timestamp=dt.datetime.now().astimezone(),
     )
     await log_channel.send(embed=embed)
@@ -614,6 +631,7 @@ async def on_role_updated(event): #Role updaed
     embed = hikari.Embed(
         title="Role updated",
         description=new_role.mention,
+        color="0x00FFFF",
         timestamp=dt.datetime.now().astimezone(),
     )
     old_values = ""
@@ -672,26 +690,34 @@ async def on_emojis_update(event): #Emoji updated, deleted, created
     new_emojis = event.emojis
     created_emojis = set(new_emojis) - set(old_emojis)
     deleted_emojis = set(old_emojis) - set(new_emojis)
-    print(created_emojis)
-    print(deleted_emojis)
-    print(old_emojis)
-    print(new_emojis)
     if created_emojis != ():
-        embed = hikari.Embed(
-            title="Emoji created",
-            timestamp=dt.datetime.now().astimezone(),
-        )
         for emoji in created_emojis:
-            embed.add_field("Name:", emoji.name + "\n" + msg_emoji(emoji))
-        if embed.fields != []:
-            await log_channel.send(embed=embed)
+            print(type(emoji.user))
+            embed = hikari.Embed(
+                title="Emoji created",
+                color="0x00FFFF",
+                description=msg_emoji(emoji) + "\n" + emoji.id,
+                timestamp=dt.datetime.now().astimezone(),
+            )
+            embed.add_field("Name:", emoji.name)
+            embed.set_image(emoji.url)
+            if emoji.user != None:
+                embed.set_author(name=emoji.user.display_name, icon=emoji.user.avatar_url)
+            if embed.fields != []:
+                await log_channel.send(embed=embed)
+            break
     if deleted_emojis != ():
         embed = hikari.Embed(
             title="Emoji deleted",
+            color="0x00FFFF",
             timestamp=dt.datetime.now().astimezone(),
         )
         for emoji in deleted_emojis:
             embed.add_field("Name:", emoji.name)
+            embed.set_image(emoji.url)
+            if emoji.user != None:
+                embed.set_author(name=emoji.user.display_name, icon=emoji.user.avatar_url)
+            break
         if embed.fields != []:
             await log_channel.send(embed=embed)
     for emoji in new_emojis:
@@ -701,12 +727,13 @@ async def on_emojis_update(event): #Emoji updated, deleted, created
                     embed = hikari.Embed(
                         title="Emoji updated",
                         description=msg_emoji(emoji),
+                        color="0x00FFFF",
                         timestamp=dt.datetime.now().astimezone(),
                     )
                     embed.add_field("Before", o_emoji.name)
                     embed.add_field("After", emoji.name)
-                    await log_channel.respond(embed=embed)
-                    
+                    await log_channel.send(embed=embed)
+
 @plugin.listener(hikari.GuildReactionAddEvent)
 async def on_reaction_add(event): #Reaction added
     pass

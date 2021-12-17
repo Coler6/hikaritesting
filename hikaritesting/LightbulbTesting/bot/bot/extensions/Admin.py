@@ -1,7 +1,6 @@
 import lightbulb
 import logging
 
-from lightbulb.checks import _owner_only
 from bot.bot import Bot
 from lightbulb import commands, context
 
@@ -48,7 +47,7 @@ async def reload(ctx:  context.Context):
 @lightbulb.option("extensions", "What extension", required=False)
 @lightbulb.command(name="load", description="Loads an extension", )
 @lightbulb.implements(commands.PrefixCommand)
-async def load(ctx:  context.Context):
+async def extension_load(ctx:  context.Context):
     await handle_extensions(ctx, ctx.options.extensions, "load")
 
 @plugin.command

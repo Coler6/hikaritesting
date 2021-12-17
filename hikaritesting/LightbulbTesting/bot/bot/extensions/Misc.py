@@ -5,7 +5,6 @@ import typing as t
 import datetime as dt
 from lightbulb import commands, context
 import traceback
-plugin = lightbulb.Plugin("Misc")
 
 def badges(badges):
     print("badges")
@@ -31,6 +30,10 @@ def badges(badges):
         badge_list = badge_list + all_badges[str(badge)]
     print(badge_list)
     return badge_list
+
+plugin = lightbulb.Plugin("Misc")
+
+
 
 @plugin.command
 @lightbulb.option("target", "The member to get information about.", hikari.User, required=False)
@@ -191,6 +194,20 @@ async def banner(ctx):
         print(6)
         return
     await ctx.respond(embed=embed)
+
+@plugin.command
+@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_EMOJIS_AND_STICKERS))
+@lightbulb.add_checks(lightbulb.guild_only)
+@lightbulb.option("name", "The name of the emoji", required=False)
+@lightbulb.option("emoji", "The emoji you are going to steal", type=hikari.Emoji, required=True)
+@lightbulb.command("steal", description="Steals a emoji :)", auto_defer=True)
+@lightbulb.implements(commands.PrefixCommand)
+async def steal(ctx):
+    guild = ctx.get_guild()
+    print(type(ctx.options.emoji))
+    emoji = await ctx.bot.rest.create_emoji(guild=guild, name=ctx.options.name, image=ctx.options.emoji.url)
+    print(emoji)
+    await ctx.respond(f"{emoji} Added {'animated ' if emoji.is_animated == True else ''}emoji {emoji.name}")
 
 @plugin.command
 @lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.ADMINISTRATOR))

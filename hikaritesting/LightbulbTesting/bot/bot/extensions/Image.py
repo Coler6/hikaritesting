@@ -119,5 +119,6 @@ def create_welcome_card(pfp, user):
 plugin = lightbulb.Plugin("Image")
 
 
+
 def load(bot: lightbulb.BotApp) -> None:
     bot.add_plugin(plugin)
