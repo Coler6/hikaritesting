@@ -5,40 +5,17 @@ import typing as t
 import datetime as dt
 from lightbulb import commands, context
 import traceback
-
-def badges(badges):
-    print("badges")
-    if str(badges) == "NONE":
-        return "No badges"
-    badge_list = ""
-    all_badges = {
-        "BUG_HUNTER_LEVEL_1": "<:BugHunterLV1:916092123693064232>",
-        "BUG_HUNTER_LEVEL_2": "<:BugHunterLV2:916092123885998181>",
-        "DISCORD_CERTIFIED_MODERATOR": "<:DiscordCertifiedModerator:916098293023522927>", 
-        "DISCORD_EMPLOYEE": "<:Employee:916092124137672804>",
-        "EARLY_SUPPORTER": "<:EarlySupporter:916092123206516757>",
-        "EARLY_VERIFIED_DEVELOPER": "<:EarlyVerifiedDeveloper:916097664255393802>",
-        "HYPESQUAD_BALANCE": "<:HypeSquadBalance:916092123349143572>",
-        "HYPESQUAD_BRAVERY": "<:HypeSquadBravery:916092122556420146>",
-        "HYPESQUAD_BRILLIANCE": "<:HypeSquadBrillance:916092122652868629>",
-        "HYPESQUAD_EVENTS": "<:HypeSquadEvents:916092123210715166>",
-        "PARTNERED_SERVER_OWNER": "<:HypeSquadEvents:916092123210715166>",
-    }
-    print(badges)
-    for badge in badges:
-        badge_list = str(badge_list)
-        badge_list = badge_list + all_badges[str(badge)]
-    print(badge_list)
-    return badge_list
+from bot.bot.utils import db, conv
+import asyncio
 
 plugin = lightbulb.Plugin("Misc")
 
-
+badges = conv.badges
 
 @plugin.command
 @lightbulb.option("target", "The member to get information about.", hikari.User, required=False)
 @lightbulb.command("userinfo", description="Shows the info of a user.", auto_defer=True)
-@lightbulb.implements(commands.PrefixCommand, commands.SlashCommand)
+@lightbulb.implements(commands.PrefixCommand, commands.SlashCommand, commands.UserCommand)
 async def userinfo(ctx) -> None:
     target = ctx.options.target or ctx.member
     print(target)
@@ -79,6 +56,9 @@ async def userinfo(ctx) -> None:
             .set_footer(text=f"Requested by {ctx.member.display_name}", icon=ctx.member.avatar_url)
         )
         print(5)
+        print(dt.datetime.utcfromtimestamp(int(dt.datetime.timestamp(target.created_at))))
+        print(dt.datetime.timestamp(target.joined_at))
+        print(dt.datetime.utcnow())
         fields = [("Name", str(target), True),
                     ("Discriminator", target.discriminator, True),
                     ("ID", target.id, True),
@@ -86,8 +66,8 @@ async def userinfo(ctx) -> None:
                     ("Top role", top_role.mention if top_role.mention else '@everyone', True),
                     #("Status", str(target.status), True),
                     ("Presence", presence.visible_status if presence != None else "Offline" + presence.activities[0].name if presence != None else "Offline", True),
-                    ("Created at", target.created_at.strftime('%d/%m/%Y %H:%M:%S'), True),
-                    ("Joined at", target.joined_at.strftime("%d/%m/%Y %H:%M:%S"), True),
+                    ("Created at", f"{conv.long_delta(dt.datetime.utcnow() - dt.datetime.utcfromtimestamp(int(dt.datetime.timestamp(target.created_at))))} (<t:{int(dt.datetime.timestamp(target.created_at))}:D>)", True),
+                    ("Joined at",f"{conv.long_delta(dt.datetime.utcnow() - dt.datetime.utcfromtimestamp(int(dt.datetime.timestamp(target.joined_at))))} (<t:{int(dt.datetime.timestamp(target.joined_at))}:D>)", True),
                     ("Boosted since", getattr(target.premium_since, "strftime", lambda x: "Not boosting")("%d/%m/%Y %H:%M:%S"), True),
                     ("Badges", badges(target.flags), True)
                     ]
@@ -217,6 +197,39 @@ async def steal(ctx):
 @lightbulb.implements(commands.PrefixCommand, commands.SlashCommand)
 async def logging(ctx):
     channel_id = ctx.options.channel.id
+
+@plugin.command
+@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.ADMINISTRATOR))
+@lightbulb.add_checks(lightbulb.guild_only)
+@lightbulb.option("emoji", "The emoji for the ticket", type=hikari.Emoji, required=False)
+@lightbulb.option("category", "The category for the ticket", type=hikari.GuildCategory, required=False)
+@lightbulb.command("ticket", description="Creates a ticket message", auto_defer=True)
+@lightbulb.implements(commands.PrefixCommand)
+async def ticket(ctx):
+    ticket_message = await ctx.respond("React to create a ticket!")
+    reaction_message = await ticket_message.message()
+    emoji = ctx.options.emoji or "🎟️"
+    try:
+        reaction = await reaction_message.add_reaction(emoji)
+    except:
+        await ticket_message.edit(content="Invalided emoji or I can not access it.")
+        return
+    await ctx.event.message.delete()
+    guild = ctx.get_guild()
+    if ctx.options.category == None:
+        category = await guild.create_category("tickets", reason="Automated ticket category created")
+    while True:
+        try:
+            event = await ctx.bot.event_manager.wait_for(hikari.GuildReactionAddEvent, timeout=120)
+        except asyncio.TimeoutError as e:
+            break
+        else:
+            if reaction_message.id == event.message_id:
+                if event.emoji_id == None:
+                    if event.emoji_name != emoji: continue
+                else:
+                    if event.emoji_id != emoji: continue
+                channel = await guild.create_text_channel(f"ticket_{ctx.user.username}", category=ctx.options.category.id or category.id,)
 
 def load(bot: lightbulb.BotApp) -> None:
     bot.add_plugin(plugin)

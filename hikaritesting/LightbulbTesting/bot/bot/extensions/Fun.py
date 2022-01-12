@@ -8,10 +8,9 @@ from lightbulb import commands, context
 import random
 import requests as request
 import praw as p
-import neon
-# from bot.bot.memes import Meme
+from lightbulb.ext import neon
+from bot.bot.utils import db, memes
 plugin = lightbulb.Plugin("Fun")
-3
 
 #    """Shows a pic of some cute goats."""
 #    p = []
@@ -19,30 +18,11 @@ plugin = lightbulb.Plugin("Fun")
 #        p.append(photos)
 #    await ctx.respond(random.choice(p))
 
-try:
-    reddit = p.Reddit(client_id='7gZghVq_G973pA',
-                            client_secret='0llvlOaEUfzZaFvHVJ6GS2NKg27yew',
-                            user_agent='Red.py')
-    CLIENT_ID = "7gZghVq_G973pA"
-    SECRET_KEY = "0llvlOaEUfzZaFvHVJ6GS2NKg27yew"
-    auth = request.auth.HTTPBasicAuth(CLIENT_ID, SECRET_KEY)
-    data = {
-        'grant_type': 'password',
-        'username': 'Coler21gamer',
-        'password': 'U289ulso'
-    }
-    headers = {'User-Agent': 'RedBotAPI/1.0.0'}
-    res = request.post("https://www.reddit.com/api/v1/access_token", auth=auth, data=data, headers=headers)
-    TOKEN = res.json()
-    headers['Authorization'] = f'bearer {TOKEN}'
-    res = request.get('https://oauth.reddit.com/r/python/wholesomememes/', headers=headers)
-    res.json
-except:
-    print("Reddit errored!!")
+reddit = memes
 
 @plugin.command
 @lightbulb.command(name="ping", description="Pong!")
-@lightbulb.implements(commands.PrefixCommand, commands.SlashCommand)
+@lightbulb.implements(commands.PrefixCommand, commands.SlashCommand, commands.UserCommand, commands.MessageCommand)
 async def ping(ctx: context.Context) -> None:
     await ctx.respond(f"Latency: {ctx.bot.heartbeat_latency * 1_000:,.0f} ms.")
 
@@ -61,10 +41,7 @@ async def memes(ctx):
         if subreddits == None:
             reddits = 'wholesomememes','memes','dankmemes'
             sub = random.choice(reddits)
-        memes_submissions = reddit.subreddit(f'{sub}').hot()
-        post_to_pick = random.randint(1, 50)
-        for i in range(0, post_to_pick):
-            submission = next(x for x in memes_submissions if not x.stickied)
+        submission = memes.rando_meme(sub)
         embed = hikari.Embed(title=f'{sub}', description=f"{submission.title}", color=(ctx.member.get_top_role().color if ctx.member != None else 0x2f3136)).set_image(submission.url)
         await ctx.respond(embed=embed)
 

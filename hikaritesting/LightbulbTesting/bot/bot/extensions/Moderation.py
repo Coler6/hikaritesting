@@ -6,6 +6,7 @@ from bot.bot import Bot
 import datetime as dt
 import asyncio
 from lightbulb import commands, context
+from bot.bot.utils import conv
 
 plugin = lightbulb.Plugin("Moderation")
 plugin.add_checks(lightbulb.guild_only)
@@ -91,40 +92,58 @@ async def unban(ctx):
     await ctx.respond(embed=embed)
 
 @plugin.command
-@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_MESSAGES))
+@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.MODERATE_MEMBERS))
 @lightbulb.option("member", "The member that is getting muted", hikari.User, required=True)
-@lightbulb.command(name="mute", description="Mutes another user.", auto_defer=True)
+@lightbulb.option("time", "How long they get timed out for. ex: 5d (s=second, m=minute, h=hour, d=day, w=week)", str, default="7d", required=False)
+@lightbulb.command(name="timeout", description="Times out another user.", auto_defer=True)
 @lightbulb.implements(commands.PrefixCommand, commands.SlashCommand)
-async def mute(ctx):
+async def timeout(ctx):
     guild = ctx.get_guild()
     member = ctx.options.member
     if member.id == ctx.author.id:
         return await ctx.respond("That's you!")
-    for role in await guild.fetch_roles():
-        if role.name.lower() == "muted":
-            await member.add_role(role, reason=f"Muted by {ctx.author.username}")
-            embed = (hikari.Embed(title = f"Muted {member.username} ({member.id})", description = "Shush it and stop being a pain in the **horn**", color = (0x0036FF)))
-            await ctx.respond(embed = embed)
-            return
-    await ctx.respond("Could not find a `muted` role.")
+    if member.communication_disabled_until() != None:
+        return await ctx.respond("That member is already timed out!")
+    time = conv.time_amount(ctx.options.time, max=2419200)
+    print(time)
+    if time[0] == None:
+        if time[1] == 0:
+            return await ctx.respond("Invalid time or error converting")
+        if time[1] == 1:
+            return await ctx.respond("Sorry, the max is 28 days!")
+    await member.edit(communication_disabled_until=dt.datetime.utcnow() + dt.timedelta(0, time[0]), reason=f"Timed out for {str(time[2]) + ' ' + str(time[1]) + ('s' if time[2] != 1 else '')} by {ctx.author.username}")
+    embed = (hikari.Embed(title = f"Timed out {member.username} ({member.id}) for {str(time[2]) + ' ' + str(time[1]) + ('s' if time[2] != 1 else '')}", description = "Shush it and stop being a pain in the **horn**", color = (0x0036FF)))
+    await ctx.respond(embed = embed)
+    # for role in await guild.fetch_roles():
+    #     if role.name.lower() == "muted":
+    #         await member.add_role(role, reason=f"Muted by {ctx.author.username}")
+    #         embed = (hikari.Embed(title = f"Muted {member.username} ({member.id})", description = "Shush it and stop being a pain in the **horn**", color = (0x0036FF)))
+    #         await ctx.respond(embed = embed)
+    #         return
+    # await ctx.respond("Could not find a `muted` role.")
 
 @plugin.command
-@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.MANAGE_MESSAGES))
-@lightbulb.option("member", "The member that is getting unmuted", hikari.User, required=True)
-@lightbulb.command(name="unmute", description="Unmuted another user from the server.", auto_defer=True)
+@lightbulb.add_checks(lightbulb.has_guild_permissions(hikari.Permissions.MODERATE_MEMBERS))
+@lightbulb.option("member", "The member that is getting untimed out", hikari.User, required=True)
+@lightbulb.command(name="untimeout", description="Untimes out another user from the server.", auto_defer=True)
 @lightbulb.implements(commands.PrefixCommand, commands.SlashCommand)
-async def unmute(ctx):
+async def untimeout(ctx):
     guild = ctx.get_guild()
     member = ctx.options.member
     if member.id == ctx.author.id:
         return await ctx.respond("That's you!")
-    for role in await guild.fetch_roles():
-        if role.name.lower() == "muted":
-            await member.remove_role(role, reason=f"Unmuted by {ctx.author.username}")
-            embed = (hikari.Embed(title = f"Unmuted {member.username} ({member.id})", description = "Better not **butt** in to the conversion", color = (0x0036FF)))
-            await ctx.respond(embed = embed)
-            return
-    await ctx.respond("Could not find a `muted` role.")
+    if member.communication_disabled_until() == None:
+        return await ctx.respond("That member is not timed out!")
+    await member.edit(communication_disabled_until=None, reason=f"Untimed out by {ctx.author.username}")
+    embed = (hikari.Embed(title = f"Untimed out {member.username} ({member.id})", description = "Better not **butt** in to the conversation", color = (0x0036FF)))
+    await ctx.respond(embed = embed)
+    # for role in await guild.fetch_roles():
+    #     if role.name.lower() == "muted":
+    #         await member.remove_role(role, reason=f"Unmuted by {ctx.author.username}")
+    #         embed = (hikari.Embed(title = f"Unmuted {member.username} ({member.id})", description = "Better not **butt** in to the conversation", color = (0x0036FF)))
+    #         await ctx.respond(embed = embed)
+    #         return
+    # await ctx.respond("Could not find a `muted` role.")
 
 def load(bot: lightbulb.BotApp) -> None:
     bot.add_plugin(plugin)
